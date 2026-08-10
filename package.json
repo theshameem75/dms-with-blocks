@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "dev:https": "next dev -H dntdxj.dev.slsblx.com -p 3000 --experimental-https --experimental-https-key .cert/dev-key.pem --experimental-https-cert .cert/dev-cert.pem",
+    "dev:https": "next dev -H ssdlik.dev.slsblx.com -p 3000 --experimental-https --experimental-https-key .cert/dev-key.pem --experimental-https-cert .cert/dev-cert.pem",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"

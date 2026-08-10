@@ -72,11 +72,14 @@ adds no custom backend beyond what's needed to broker the OIDC handshake.
    see the `blocks-iam-sso-oidc-configuration` skill. Add the production callback URL
    there too before deploying.
 
-3. `npm install && npm run dev`, then open `http://localhost:3000`.
+3. `npm install && npm run dev`, then open `http://localhost:3000` — or, for HTTPS on
+   the project's dev domain (required when `BLOCKS_REDIRECT_URI` is an `https://...`
+   URL), see [HTTPS dev setup](#https-dev-setup) below.
 
 Unlike a typical Blocks frontend, **you do not need `blocks-frontend-local-https`** —
-this app never stores a Blocks session cookie in the browser, so it can run on plain
-`http://localhost` without a same-site HTTPS domain.
+this app never stores a Blocks session cookie in the browser. The only reason to run
+HTTPS locally is when `BLOCKS_REDIRECT_URI` itself is `https://...` (so the callback
+URL has to match over HTTPS).
 
 ## Data service: `/Directory/*` + `/Files/*`, not `/Files/GetDmsFileAndFolder`
 
@@ -129,6 +132,55 @@ Two more pieces run on top of `/Directory` and `/Files`:
   `GetDirectoryChildren` call for its children — access there is enforced server-side by
   the share, not by this page. It's read-only (no Share/Delete): a share may only grant
   View/Download, and `GetSharedContent` doesn't say what permission you hold on each row.
+
+## HTTPS dev setup
+
+The `.env.local` shipped here points `BLOCKS_REDIRECT_URI` at
+`https://ssdlik.dev.slsblx.com:3000/api/auth/callback`, so the dev server has to serve
+HTTPS on that hostname (or Blocks' OIDC callback won't match). One-time setup:
+
+1. **Install `mkcert`** — <https://github.com/FiloSottile/mkcert#installation>. On
+   Windows, `winget install FiloSottile.mkcert` is the simplest route.
+2. **Trust the local CA** once per machine: `mkcert -install` (creates a root cert in
+   your OS + browser trust stores so browsers stop warning).
+3. **Generate a cert for this project** (cert + key land in `.cert/`, which is
+   gitignored — `*.pem` is already covered too):
+
+   ```bash
+   mkdir -p .cert
+   mkcert -cert-file .cert/dev-cert.pem -key-file .cert/dev-key.pem \
+     ssdlik.dev.slsblx.com localhost 127.0.0.1 ::1
+   ```
+
+   The cert also includes `dntdxj.dev.slsblx.com` if you need to flip back to the
+   earlier hostname; just re-run `mkcert` with whichever names you want as SANs.
+
+4. **Map the hostname to localhost** — add to `C:\Windows\System32\drivers\etc\hosts`
+   (edit as Administrator):
+
+   ```
+   127.0.0.1   ssdlik.dev.slsblx.com
+   ```
+
+5. **Start the dev server over HTTPS:**
+
+   ```bash
+   npm run dev:https
+   ```
+
+   That runs `next dev -H ssdlik.dev.slsblx.com -p 3000 --experimental-https
+   --experimental-https-key .cert/dev-key.pem --experimental-https-cert
+   .cert/dev-cert.pem`, giving you <https://ssdlik.dev.slsblx.com:3000>. The
+   `allowedDevOrigins` entry in `next.config.ts` whitelists this hostname so HMR
+   works on the custom domain.
+
+   If `mkcert -install` was skipped or you're opening the site from a browser/device
+   that doesn't trust the local CA, the browser will show a cert warning — proceed
+   past it for dev only. Production needs a real cert (e.g. via the project's reverse
+   proxy) registered on the Blocks OIDC client's `redirectUris`.
+
+`npm run dev` (plain HTTP on `localhost:3000`) still works for any flow that doesn't
+need the HTTPS callback URL to match.
 
 ## Fixed: wrong API host was causing `404 Application_Not_Found`
 
